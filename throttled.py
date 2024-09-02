@@ -707,6 +707,7 @@ def power_thread(config, regs, exit_event, cpuid):
     last_config_write_time = (
         get_config_write_time() if config.getboolean('GENERAL', 'Autoreload', fallback=False) else None
     )
+    previous_power_source = None
     while not exit_event.is_set():
         # log thermal status
         if args.debug:
@@ -787,13 +788,11 @@ def power_thread(config, regs, exit_event, cpuid):
         if (
             enable_hwp_mode
             and next_hwp_write <= time()
-            and (
-                (power['method'] == 'dbus' and power['source'] == 'AC')
-                or (power['method'] == 'polling' and not is_on_battery(config))
-            )
-        ):
+            and power['source'] == 'AC'
+        ) or previous_power_source != power['source']:
             set_hwp(enable_hwp_mode)
             next_hwp_write = time() + HWP_INTERVAL
+            previous_power_source = power['source']
 
         else:
             exit_event.wait(wait_t)
