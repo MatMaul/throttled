@@ -776,14 +776,7 @@ def power_thread(config, regs, exit_event, cpuid):
         wait_t = config.getfloat(power['source'], 'Update_Rate_s')
         enable_hwp_mode = config.getboolean('AC', 'HWP_Mode', fallback=None)
         # set HWP less frequently. Just to be safe since (e.g.) TLP might reset this value
-        if (
-            enable_hwp_mode
-            and next_hwp_write <= time()
-            and (
-                (power['method'] == 'dbus' and power['source'] == 'AC')
-                or (power['method'] == 'polling' and not is_on_battery(config))
-            )
-        ):
+        if enable_hwp_mode and next_hwp_write <= time():
             set_hwp(enable_hwp_mode)
             next_hwp_write = time() + HWP_INTERVAL
 
@@ -994,6 +987,7 @@ def main():
         if not sleeping:
             undervolt(config)
             set_icc_max(config)
+            set_hwp(config.getboolean('AC', 'HWP_Mode', fallback=None))
 
     def handle_ac_callback(if_name, changed, invalidated):
         if "OnBattery" in changed:
@@ -1007,6 +1001,7 @@ def main():
         bus.add_signal_receiver(
             handle_sleep_callback, 'PrepareForSleep', 'org.freedesktop.login1.Manager', 'org.freedesktop.login1'
         )
+
     bus.add_signal_receiver(
         handle_ac_callback,
         signal_name="PropertiesChanged",
